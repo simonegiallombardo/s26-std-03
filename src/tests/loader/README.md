@@ -8,7 +8,9 @@ can verify the library behaves as documented. Put Tests_loader in the same space
 
 ## Running the suite
 
-From the folder that contains `disassembly_loader/` and `tests/`:
+1. Add the entire directory test/ (this one) into the folder `src/main/disassembly_loader/`.
+2. cd src/main/disassembly_loader/
+3. run
 
 ```bash
 pip3 install pytest jsonschema     # once
