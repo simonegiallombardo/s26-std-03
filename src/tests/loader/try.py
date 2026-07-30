@@ -1,14 +1,15 @@
 """
-try_loader.py — a small script to see the loader in action.
+try.py — a small script to see the loader in action (schema 1.1).
 
 Run it from the project root (the folder that contains `disassembly_loader/`):
 
-    python try_loader.py                          # uses a default fixture
-    python try_loader.py path/to/your_model.json  # try your own model
+    python try.py                          # uses default fixtures
+    python try.py path/to/your_model.json  # try your own model
 
 It runs the full pipeline on a model and prints the guide in a readable form:
-the product, every step with its instructions and outputs, any warnings, and the
-bill of materials.
+the product, the guide-level tools, every step (what it acts on, its
+instructions, the parts obtained and the ones that continue), any warnings, and
+the bill of materials.
 """
 
 import sys
@@ -32,11 +33,15 @@ def show(path: str) -> None:
     print(f"PRODUCT: {p.name}  ({weight})")
     print(f"SCHEMA VERSION: {guide.schema_version}")
     print(f"DEPTH: {guide.depth.mode.value}")
+    if guide.tools:
+        print(f"TOOLS (whole guide): {', '.join(guide.tools)}")
 
     # --- steps ---------------------------------------------------------------
     print(f"\nSTEPS: {len(guide.steps)}")
     for s in guide.steps:
         print(f"\n  {s.index}. {s.operation}")
+        # schema 1.1: the component the operation is performed on
+        print(f"       on: {s.input.name}")
         if s.actions:
             for a in s.actions:
                 tool = f"  [tool: {a.tools}]" if a.tools else ""
@@ -49,14 +54,18 @@ def show(path: str) -> None:
                 tag = f" (kept whole, {o.contained_leaf_count} parts inside)" if o.kept_whole else ""
                 parts.append(o.name + tag)
             print(f"       => produces: {', '.join(parts)}")
+        # schema 1.1: continues_as is a LIST of continuing components (possibly
+        # several, on a branched model; empty on a terminal step)
         if s.continues_as:
-            print(f"       .. continues as: {s.continues_as.name}")
+            names = ", ".join(c.name for c in s.continues_as)
+            print(f"       .. continues as: {names}")
 
     # --- warnings ------------------------------------------------------------
     print(f"\nWARNINGS: {len(guide.warnings)}")
     for w in guide.warnings:
         ids = ", ".join(str(i) for i in w.node_ids)
-        print(f"  [{w.severity.value.upper()}] {w.rule} (nodes {ids})")
+        where = f" (nodes {ids})" if ids else ""
+        print(f"  [{w.severity.value.upper()}] {w.rule}{where}")
         print(f"        {w.message}")
 
     # --- bill of materials ---------------------------------------------------
@@ -80,9 +89,9 @@ if __name__ == "__main__":
     else:
         # no argument: run a couple of contrasting fixtures so you see variety
         defaults = [
-            "tests/fixtures/BialettiGioia.json",         # clean: weights, no warnings
+            "tests/fixtures/BialettiGioia.json",              # clean, linear chain
             "tests/fixtures/Air_fryer_Philips_HD9252.json",  # branching + no-action diamonds
         ]
         for d in defaults:
             show(d)
-        print("\nTip: pass your own file  ->  python try_loader.py path/to/model.json")
+        print("\nTip: pass your own file  ->  python try.py path/to/model.json")
